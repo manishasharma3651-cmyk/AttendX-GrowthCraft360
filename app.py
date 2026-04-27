@@ -54,7 +54,11 @@ DB_CONFIG = {
 # ================================================================
 
 import os as _os
-FRONTEND_DIR = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'frontend')
+# Frontend path - works whether app.py is at root or in backend/
+_base = _os.path.dirname(_os.path.abspath(__file__))
+FRONTEND_DIR = _os.path.join(_base, 'frontend')
+if not _os.path.exists(FRONTEND_DIR):
+    FRONTEND_DIR = _os.path.join(_base, '..', 'frontend')
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
 app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20MB max request size
 CORS(app,
