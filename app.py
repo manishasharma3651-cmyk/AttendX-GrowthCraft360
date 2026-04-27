@@ -9,9 +9,19 @@ Setup:
   3. Neeche DB_CONFIG mein apna MySQL password fill karo
   4. pip install flask flask-cors pyjwt bcrypt PyMySQL
   5. python app.py
+  6. Browser mein kholo: http://localhost:5000
+     (file:// se mat kholo — fetch kaam nahi karega)
+
+DOCUMENT UPLOAD FIX (Failed to fetch):
+  MySQL ka max_allowed_packet badhao. mysql.ini / my.cnf mein add karo:
+    [mysqld]
+    max_allowed_packet = 64M
+  Ya phpMyAdmin se run karo:
+    SET GLOBAL max_allowed_packet = 67108864;
+  (app.py mein session-level fix already add kar diya hai)
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import bcrypt
 import jwt
@@ -31,19 +41,29 @@ except ImportError:
 # ================================================================
 #  APNA MySQL PASSWORD YAHAN DAALO
 # ================================================================
+# Railway pe environment variables se DB config aayega
+# Local pe pehle ki tarah manually fill karo
 DB_CONFIG = {
-    "host":     "localhost",
-    "port":     3306,
-    "user":     "root",
-    "password": "",   # <-- YAHAN APNA PASSWORD
-    "db":       "attendx",
+    "host":     os.environ.get("MYSQLHOST",     "localhost"),
+    "port":     int(os.environ.get("MYSQLPORT", "3306")),
+    "user":     os.environ.get("MYSQLUSER",     "root"),
+    "password": os.environ.get("MYSQLPASSWORD", ""),   # <-- LOCAL ke liye apna password yahan
+    "db":       os.environ.get("MYSQLDATABASE", "attendx"),
     "charset":  "utf8mb4",
 }
 # ================================================================
 
-app = Flask(__name__)
+import os as _os
+FRONTEND_DIR = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), '..', 'frontend')
+app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
 app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20MB max request size
-CORS(app, origins="*", allow_headers=["Content-Type", "Authorization"], methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+CORS(app,
+     origins="*",
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     expose_headers=["Content-Type"],
+     supports_credentials=False
+)
 
 SECRET_KEY    = "attendx_secret_key_change_in_production"
 LATE_HOUR     = 11
@@ -59,7 +79,8 @@ def get_db():
             password=DB_CONFIG["password"],
             db=DB_CONFIG["db"],
             charset=DB_CONFIG["charset"],
-            cursorclass=pymysql.cursors.DictCursor
+            cursorclass=pymysql.cursors.DictCursor,
+            init_command="SET SESSION max_allowed_packet=67108864"  # 64MB — large file uploads ke liye
         )
     else:
         import sqlite3
@@ -166,6 +187,23 @@ def require_admin(f):
         return f(*args, **kwargs)
     return wrapper
 
+
+
+# ── Frontend Serving ─────────────────────────────────────────
+@app.route("/")
+def serve_index():
+    return send_from_directory(app.static_folder, "index.html")
+
+@app.route("/<path:path>")
+def serve_static(path):
+    # Don't intercept /api/ routes
+    if path.startswith("api/"):
+        from flask import abort
+        abort(404)
+    full = _os.path.join(app.static_folder, path)
+    if _os.path.exists(full):
+        return send_from_directory(app.static_folder, path)
+    return send_from_directory(app.static_folder, "index.html")
 
 # ================================================================
 #  ROUTES
@@ -633,5 +671,8 @@ if __name__ == "__main__":
         print("  SQLite Fallback — PyMySQL install karo MySQL ke liye")
         print("  Command: pip install PyMySQL")
     print(f"  Server: http://localhost:5000")
+    print(f"  BROWSER MEIN KHOLO: http://localhost:5000")
+    print(f"  (file:// se mat kholo!)")
     print("=" * 56)
-    app.run(debug=True, port=5000)
+    PORT = int(os.environ.get("PORT", 5000))
+    app.run(debug=False, host="0.0.0.0", port=PORT)
