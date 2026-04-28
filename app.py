@@ -73,6 +73,7 @@ SECRET_KEY    = "attendx_secret_key_change_in_production"
 LATE_HOUR     = 11
 HALF_DAY_HOUR = 12
 
+_db_migrated = False
 
 def get_db():
     if USE_MYSQL:
@@ -83,8 +84,7 @@ def get_db():
             password=DB_CONFIG["password"],
             db=DB_CONFIG["db"],
             charset=DB_CONFIG["charset"],
-            cursorclass=pymysql.cursors.DictCursor,
-            init_command="SET SESSION max_allowed_packet=67108864"  # 64MB — large file uploads ke liye
+            cursorclass=pymysql.cursors.DictCursor
         )
     else:
         import sqlite3
@@ -103,8 +103,44 @@ def get_db():
             uploaded_at TEXT,
             UNIQUE(user_id, doc_type)
         )""")
+        # Add bank/KYC columns if upgrading existing SQLite db
+        for col, typ in [("bank_ac_no","TEXT"),("bank_name","TEXT"),("bank_branch","TEXT"),("bank_ifsc","TEXT"),("aadhar_no","TEXT"),("pan_no","TEXT")]:
+            try:
+                c.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
+            except Exception:
+                pass
+        # Add location columns if upgrading existing SQLite db
+        for col in ["checkin_location","checkout_location","lunch_in_location","lunch_out_location"]:
+            try:
+                c.execute(f"ALTER TABLE attendance ADD COLUMN {col} TEXT")
+            except Exception:
+                pass
         conn.commit()
         return conn
+
+
+def run_migrations():
+    """Auto-add new columns to existing MySQL DB on startup"""
+    global _db_migrated
+    if _db_migrated:
+        return
+    _db_migrated = True
+    if not USE_MYSQL:
+        return
+    try:
+        db = get_db()
+        for col in ["checkin_location","checkout_location","lunch_in_location","lunch_out_location"]:
+            try:
+                with db.cursor() as cur:
+                    cur.execute(f"ALTER TABLE attendance ADD COLUMN IF NOT EXISTS {col} VARCHAR(300) DEFAULT NULL")
+                db.commit()
+            except Exception:
+                pass
+        db.close()
+    except Exception:
+        pass
+
+
 
 
 def qry(conn, sql, params=None, fetch="none"):
@@ -267,13 +303,19 @@ def login():
 @require_auth
 def get_users():
     db    = get_db()
-    users = qry(db, "SELECT id,name,username,role,dept,salary,email,join_date FROM users", fetch="all")
+    users = qry(db, "SELECT id,name,username,role,dept,salary,email,join_date,bank_ac_no,bank_name,bank_branch,bank_ifsc,aadhar_no,pan_no FROM users", fetch="all")
     db.close()
     result = []
     for u in users:
         u = dict(u)
-        u["salary"]    = float(u.get("salary") or 0)
-        u["join_date"] = str(u["join_date"]) if u.get("join_date") else ""
+        u["salary"]      = float(u.get("salary") or 0)
+        u["join_date"]   = str(u["join_date"]) if u.get("join_date") else ""
+        u["bank_ac_no"]  = u.get("bank_ac_no") or ""
+        u["bank_name"]   = u.get("bank_name") or ""
+        u["bank_branch"] = u.get("bank_branch") or ""
+        u["bank_ifsc"]   = u.get("bank_ifsc") or ""
+        u["aadhar_no"]   = u.get("aadhar_no") or ""
+        u["pan_no"]      = u.get("pan_no") or ""
         result.append(u)
     return jsonify(result)
 
@@ -299,12 +341,18 @@ def add_user():
     join_d = data.get("joinDate") or datetime.date.today().isoformat()
 
     qry(db,
-        "INSERT INTO users (id,name,username,password,role,dept,salary,email,join_date) VALUES (?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO users (id,name,username,password,role,dept,salary,email,join_date,bank_ac_no,bank_name,bank_branch,bank_ifsc,aadhar_no,pan_no) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (new_id, name, username, hashed, "employee",
          data.get("dept", ""),
          float(data.get("salary") or 0),
          data.get("email", ""),
-         join_d))
+         join_d,
+         data.get("bankAcNo", "") or None,
+         data.get("bankName", "") or None,
+         data.get("bankBranch", "") or None,
+         data.get("bankIfsc", "") or None,
+         data.get("aadharNo", "") or None,
+         data.get("panNo", "") or None))
     db.commit()
     db.close()
     return jsonify({"success": True, "id": new_id}), 201
@@ -324,7 +372,7 @@ def update_user(user_id):
     hashed = bcrypt.hashpw(pwd.encode(), bcrypt.gensalt()).decode() if pwd else user["password"]
 
     qry(db,
-        "UPDATE users SET name=?,username=?,password=?,dept=?,salary=?,email=?,join_date=? WHERE id=?",
+        "UPDATE users SET name=?,username=?,password=?,dept=?,salary=?,email=?,join_date=?,bank_ac_no=?,bank_name=?,bank_branch=?,bank_ifsc=?,aadhar_no=?,pan_no=? WHERE id=?",
         (data.get("name",     user["name"]),
          data.get("username", user["username"]),
          hashed,
@@ -332,6 +380,12 @@ def update_user(user_id):
          float(data.get("salary") or user.get("salary") or 0),
          data.get("email",   user.get("email", "")),
          data.get("joinDate", str(user["join_date"])) if data.get("joinDate") else str(user.get("join_date", "")),
+         data.get("bankAcNo",  user.get("bank_ac_no", "")) or None,
+         data.get("bankName",  user.get("bank_name", "")) or None,
+         data.get("bankBranch",user.get("bank_branch","")) or None,
+         data.get("bankIfsc",  user.get("bank_ifsc", "")) or None,
+         data.get("aadharNo",  user.get("aadhar_no", "")) or None,
+         data.get("panNo",     user.get("pan_no", "")) or None,
          user_id))
     db.commit()
     db.close()
@@ -376,6 +430,8 @@ def check_in():
     now      = datetime.datetime.now()
     now_str  = now.strftime("%H:%M")
     now_hour = now.hour
+    data     = request.json or {}
+    location = data.get("location", None)
 
     db = get_db()
     if qry(db, "SELECT id FROM attendance WHERE user_id=? AND date=?", (user_id, today), fetch="one"):
@@ -387,8 +443,8 @@ def check_in():
     record_id   = uid()
 
     qry(db,
-        "INSERT INTO attendance (id,user_id,date,check_in,is_late,is_half_day) VALUES (?,?,?,?,?,?)",
-        (record_id, user_id, today, now_str, is_late, is_half_day))
+        "INSERT INTO attendance (id,user_id,date,check_in,is_late,is_half_day,checkin_location) VALUES (?,?,?,?,?,?,?)",
+        (record_id, user_id, today, now_str, is_late, is_half_day, location))
     db.commit()
     db.close()
     return jsonify({"success": True, "checkIn": now_str, "id": record_id,
@@ -403,6 +459,7 @@ def check_out():
     today      = datetime.date.today().isoformat()
     now        = datetime.datetime.now().strftime("%H:%M")
     break_mins = int(data.get("breakMins", 0))
+    location   = data.get("location", None)
 
     db     = get_db()
     record = qry(db, "SELECT * FROM attendance WHERE user_id=? AND date=?", (user_id, today), fetch="one")
@@ -418,8 +475,8 @@ def check_out():
     co_h, co_m = map(int, now.split(":"))
     net_mins   = max(0, (co_h*60+co_m) - (ci_h*60+ci_m) - break_mins)
 
-    qry(db, "UPDATE attendance SET check_out=?,break_mins=?,net_mins=? WHERE id=?",
-        (now, break_mins, net_mins, record["id"]))
+    qry(db, "UPDATE attendance SET check_out=?,break_mins=?,net_mins=?,checkout_location=? WHERE id=?",
+        (now, break_mins, net_mins, location, record["id"]))
     db.commit()
     db.close()
     return jsonify({"success": True, "checkOut": now, "netMins": net_mins})
@@ -428,9 +485,11 @@ def check_out():
 @app.route("/api/attendance/lunch-in", methods=["POST"])
 @require_auth
 def lunch_in():
-    user_id = request.user["userId"]
-    today   = datetime.date.today().isoformat()
-    now     = datetime.datetime.now().strftime("%H:%M")
+    user_id  = request.user["userId"]
+    today    = datetime.date.today().isoformat()
+    now      = datetime.datetime.now().strftime("%H:%M")
+    data     = request.json or {}
+    location = data.get("location", None)
 
     db     = get_db()
     record = qry(db, "SELECT * FROM attendance WHERE user_id=? AND date=?", (user_id, today), fetch="one")
@@ -444,7 +503,7 @@ def lunch_in():
         db.close()
         return jsonify({"error": "Lunch already start ho chuka hai"}), 400
 
-    qry(db, "UPDATE attendance SET lunch_in=? WHERE id=?", (now, record["id"]))
+    qry(db, "UPDATE attendance SET lunch_in=?,lunch_in_location=? WHERE id=?", (now, location, record["id"]))
     db.commit()
     db.close()
     return jsonify({"success": True, "lunchIn": now})
@@ -453,9 +512,11 @@ def lunch_in():
 @app.route("/api/attendance/lunch-out", methods=["POST"])
 @require_auth
 def lunch_out():
-    user_id = request.user["userId"]
-    today   = datetime.date.today().isoformat()
-    now     = datetime.datetime.now().strftime("%H:%M")
+    user_id  = request.user["userId"]
+    today    = datetime.date.today().isoformat()
+    now      = datetime.datetime.now().strftime("%H:%M")
+    data     = request.json or {}
+    location = data.get("location", None)
 
     db     = get_db()
     record = qry(db, "SELECT * FROM attendance WHERE user_id=? AND date=?", (user_id, today), fetch="one")
@@ -473,8 +534,8 @@ def lunch_out():
     lunch_mins = max(0, (lo_h*60+lo_m) - (li_h*60+li_m))
     new_break  = (record.get("break_mins") or 0) + lunch_mins
 
-    qry(db, "UPDATE attendance SET lunch_out=?,break_mins=? WHERE id=?",
-        (now, new_break, record["id"]))
+    qry(db, "UPDATE attendance SET lunch_out=?,break_mins=?,lunch_out_location=? WHERE id=?",
+        (now, new_break, location, record["id"]))
     db.commit()
     db.close()
     return jsonify({"success": True, "lunchOut": now, "lunchMins": lunch_mins})
@@ -593,16 +654,29 @@ def get_documents(user_id):
         rows = qry(db, "SELECT doc_type, file_name, file_type, uploaded_at FROM documents WHERE user_id=?", (user_id,), fetch="all")
         result = []
         for r in rows:
-            # Also fetch file_data for viewing
-            full = qry(db, "SELECT file_data FROM documents WHERE user_id=? AND doc_type=?", (user_id, r["doc_type"]), fetch="one")
             result.append({
                 "doc_type":    r["doc_type"],
                 "file_name":   r["file_name"],
                 "file_type":   r["file_type"],
-                "uploaded_at": str(r.get("uploaded_at", "")),
-                "file_data":   full["file_data"] if full else ""
+                "uploaded_at": str(r.get("uploaded_at", ""))
             })
         return jsonify(result)
+    finally:
+        db.close()
+
+
+@app.route("/api/documents/<user_id>/<doc_type>/view", methods=["GET"])
+@require_auth
+def view_document(user_id, doc_type):
+    caller = request.user
+    if caller["role"] != "admin" and caller["userId"] != user_id:
+        return jsonify({"error": "Access denied"}), 403
+    db = get_db()
+    try:
+        row = qry(db, "SELECT file_data, file_type, file_name FROM documents WHERE user_id=? AND doc_type=?", (user_id, doc_type), fetch="one")
+        if not row:
+            return jsonify({"error": "Document not found"}), 404
+        return jsonify({"file_data": row["file_data"], "file_type": row["file_type"], "file_name": row["file_name"]})
     finally:
         db.close()
 
@@ -661,6 +735,7 @@ def upload_document():
 
 # ================================================================
 if __name__ == "__main__":
+    run_migrations()
     print("=" * 56)
     if USE_MYSQL:
         print("  MySQL Mode — attendx database se connect ho raha hai")
