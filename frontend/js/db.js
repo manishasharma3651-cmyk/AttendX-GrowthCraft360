@@ -1,7 +1,7 @@
 // ========== AttendX API Client ==========
 // Connects to Flask backend at http://localhost:5000
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "https://attendx-growthcraft360.onrender.com/api";
 
 const DB = {
 
