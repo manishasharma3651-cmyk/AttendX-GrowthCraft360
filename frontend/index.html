@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GrowthCraft360 Attendance Management</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="stylesheet" href="css/login.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+</head>
+<body class="login-body">
+
+<div class="login-bg">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+  <div class="grid-overlay"></div>
+</div>
+
+<div class="login-wrapper">
+  <div class="login-brand">
+    <div class="brand-logo"><img src="./images/websitelogo.webp"style="width:100%;"></div>
+    <h1 class="brand-name">Attendance Management</h1>
+   
+  </div>
+
+  <div class="login-card">
+    <div class="login-card-header">
+      <h2>Welcome Back</h2>
+      <p>Sign in to your account</p>
+    </div>
+
+    <div class="role-tabs">
+      <button class="role-tab active" data-role="admin" onclick="setRole('admin', this)">
+        <i class="fa-solid fa-shield-halved"></i> Admin
+      </button>
+      <button class="role-tab" data-role="employee" onclick="setRole('employee', this)">
+        <i class="fa-solid fa-user-tie"></i> Employee
+      </button>
+    </div>
+
+    <div id="login-error" class="login-error" style="display:none"></div>
+
+    <div class="form-group">
+      <label>Username</label>
+      <div class="input-wrap">
+        <i class="fa-solid fa-user"></i>
+        <input type="text" id="login-username" placeholder="Enter username" autocomplete="off"/>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Password</label>
+      <div class="input-wrap">
+        <i class="fa-solid fa-lock"></i>
+        <input type="password" id="login-password" placeholder="Enter password"/>
+        <i class="fa-solid fa-eye toggle-pass" onclick="togglePass(this)"></i>
+      </div>
+    </div>
+
+    <button class="login-btn" onclick="doLogin()">
+      <span>Sign In</span>
+      <i class="fa-solid fa-arrow-right"></i>
+    </button>
+
+    
+  </div>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/login.js"></script>
+</body>
+</html>

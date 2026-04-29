@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Growth Craft360</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="stylesheet" href="css/dashboard.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+</head>
+<body>
+
+<div class="app-layout">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+     <img src="./images/websitelogo.webp" style="width:100%;">
+      
+      </div>
+      <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+    </div>
+
+    <div class="sidebar-user">
+      <div class="user-avatar" id="sb-avatar">A</div>
+      <div class="user-info">
+        <div class="user-name" id="sb-name">Admin</div>
+        <div class="user-role"><i class="fa-solid fa-shield-halved"></i> Administrator</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a class="nav-item active" data-page="dashboard" onclick="showPage('dashboard',this)">
+        <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
+      </a>
+      <a class="nav-item" data-page="employees" onclick="showPage('employees',this)">
+        <i class="fa-solid fa-users"></i><span>Employees</span>
+        <span class="nav-badge" id="emp-count-badge">0</span>
+      </a>
+      <a class="nav-item" data-page="attendance" onclick="showPage('attendance',this)">
+        <i class="fa-solid fa-clock"></i><span>Attendance</span>
+      </a>
+
+      <div class="nav-section-label">Management</div>
+      <a class="nav-item" data-page="leaves" onclick="showPage('leaves',this)">
+        <i class="fa-solid fa-calendar-xmark"></i><span>Leave Requests</span>
+        <span class="nav-badge pending-badge" id="leave-count-badge">0</span>
+      </a>
+      <a class="nav-item" data-page="reports" onclick="showPage('reports',this)">
+        <i class="fa-solid fa-file-chart-column"></i><span>Reports</span>
+      </a>
+
+      <div class="nav-section-label">Account</div>
+      <a class="nav-item" onclick="doLogout()">
+        <i class="fa-solid fa-right-from-bracket"></i><span>Logout</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+        <div class="page-breadcrumb">
+          <span id="page-title">Dashboard</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-date"><i class="fa-regular fa-calendar"></i> <span id="topbar-date"></span></div>
+        <div class="topbar-time"><i class="fa-regular fa-clock"></i> <span id="topbar-time"></span></div>
+        <div class="topbar-avatar" id="topbar-av">A</div>
+      </div>
+    </header>
+
+    <div class="content-area">
+      <div class="page active" id="page-dashboard">
+        <div class="page-heading">
+          <h1>Overview <span class="heading-accent">Dashboard</span></h1>
+          <p>Welcome back! Here's what's happening today.</p>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-card" style="--accent:#6366f1">
+            <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+            <div class="stat-body">
+              <div class="stat-value" id="stat-total-emp">0</div>
+              <div class="stat-label">Total Employees</div>
+            </div>
+            <div class="stat-trend up"><i class="fa-solid fa-arrow-trend-up"></i></div>
+          </div>
+          <div class="stat-card" style="--accent:#22c55e">
+            <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="stat-body">
+              <div class="stat-value" id="stat-present">0</div>
+              <div class="stat-label">Present Today</div>
+            </div>
+            <div class="stat-trend up"><i class="fa-solid fa-arrow-trend-up"></i></div>
+          </div>
+          <div class="stat-card" style="--accent:#ef4444">
+            <div class="stat-icon"><i class="fa-solid fa-circle-xmark"></i></div>
+            <div class="stat-body">
+              <div class="stat-value" id="stat-absent">0</div>
+              <div class="stat-label">Absent Today</div>
+            </div>
+            <div class="stat-trend down"><i class="fa-solid fa-arrow-trend-down"></i></div>
+          </div>
+          <div class="stat-card" style="--accent:#f59e0b">
+            <div class="stat-icon"><i class="fa-solid fa-hourglass-half"></i></div>
+            <div class="stat-body">
+              <div class="stat-value" id="stat-pending-leaves">0</div>
+              <div class="stat-label">Pending Leaves</div>
+            </div>
+            <div class="stat-trend"><i class="fa-solid fa-minus"></i></div>
+          </div>
+          <div class="stat-card" style="--accent:#f97316">
+            <div class="stat-icon"><i class="fa-solid fa-clock"></i></div>
+            <div class="stat-body">
+              <div class="stat-value" id="stat-late">0</div>
+              <div class="stat-label">Late Today</div>
+            </div>
+            <div class="stat-trend down"><i class="fa-solid fa-triangle-exclamation"></i></div>
+          </div>
+          <div class="stat-card" style="--accent:#8b5cf6">
+            <div class="stat-icon"><i class="fa-solid fa-calendar-day"></i></div>
+            <div class="stat-body">
+              <div class="stat-value" id="stat-halfday">0</div>
+              <div class="stat-label">Half Day</div>
+            </div>
+            <div class="stat-trend down"><i class="fa-solid fa-triangle-exclamation"></i></div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="dash-card wide">
+            <div class="dash-card-header">
+              <h3>Today's Attendance</h3>
+              <span id="today-date-label"></span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Employee</th><th>Check In</th><th>Check Out</th><th>Lunch In</th><th>Lunch Out</th><th>Hours</th><th>Status</th></tr></thead>
+                <tbody id="today-att-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="dash-card">
+            <div class="dash-card-header"><h3>Attendance Rate</h3></div>
+            <div class="donut-wrap">
+              <svg class="donut" viewBox="0 0 120 120">
+                <circle class="donut-bg" cx="60" cy="60" r="50"/>
+                <circle class="donut-fill" id="donut-fill" cx="60" cy="60" r="50"
+                  stroke-dasharray="0 314" stroke-dashoffset="78.5"/>
+              </svg>
+              <div class="donut-center">
+                <div class="donut-pct" id="donut-pct">0%</div>
+                <div class="donut-sub">Today</div>
+              </div>
+            </div>
+            <div class="donut-legend">
+              <div class="leg-item"><span class="leg-dot present"></span>Present</div>
+              <div class="leg-item"><span class="leg-dot absent"></span>Absent</div>
+            </div>
+          </div>
+
+          <div class="dash-card">
+            <div class="dash-card-header"><h3>Recent Leave Requests</h3></div>
+            <div id="recent-leaves-list" class="activity-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== EMPLOYEES PAGE ====== -->
+      <div class="page" id="page-employees">
+        <div class="page-heading">
+          <h1>Employee <span class="heading-accent">Management</span></h1>
+          <button class="btn-primary" onclick="openAddEmployee()"><i class="fa-solid fa-plus"></i> Add Employee</button>
+        </div>
+
+        <div class="toolbar">
+          <div class="search-wrap">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="emp-search" placeholder="Search employees..." oninput="renderEmployees()"/>
+          </div>
+          <select class="filter-sel" onchange="renderEmployees()" id="emp-dept-filter">
+            <option value="">All Departments</option>
+          </select>
+        </div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>#</th><th>Name</th><th>Username</th><th>Department</th><th>Salary</th><th>Join Date</th><th>Actions</th></tr></thead>
+              <tbody id="emp-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== ATTENDANCE PAGE ====== -->
+      <div class="page" id="page-attendance">
+        <div class="page-heading">
+          <h1>Attendance <span class="heading-accent">Records</span></h1>
+          <button class="btn-outline" onclick="exportCSV()"><i class="fa-solid fa-download"></i> Export CSV</button>
+        </div>
+
+        <div class="toolbar">
+          <div class="search-wrap">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="att-search" placeholder="Search by name..." oninput="renderAdminAttendance()"/>
+          </div>
+          <input type="date" class="date-input" id="att-date-filter" onchange="renderAdminAttendance()"/>
+          <button class="btn-outline" onclick="document.getElementById('att-date-filter').value=''; renderAdminAttendance()">Clear</button>
+        </div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Employee</th><th>Date</th><th>Check In</th><th>Check Out</th><th>Lunch In</th><th>Lunch Out</th><th>Net Hours</th><th>Status</th></tr></thead>
+              <tbody id="admin-att-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== LEAVES PAGE ====== -->
+      <div class="page" id="page-leaves">
+        <div class="page-heading">
+          <h1>Leave <span class="heading-accent">Requests</span></h1>
+        </div>
+
+        <div class="leave-tabs">
+          <button class="ltab active" onclick="filterLeaves('pending',this)">Pending</button>
+          <button class="ltab" onclick="filterLeaves('approved',this)">Approved</button>
+          <button class="ltab" onclick="filterLeaves('rejected',this)">Rejected</button>
+          <button class="ltab" onclick="filterLeaves('all',this)">All</button>
+        </div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Reason</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="leaves-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== REPORTS PAGE ====== -->
+      <div class="page" id="page-reports">
+        <div class="page-heading">
+          <h1>Attendance <span class="heading-accent">Reports</span></h1>
+          <button class="btn-primary" onclick="exportCSV()"><i class="fa-solid fa-download"></i> Export CSV</button>
+        </div>
+
+        <div class="toolbar">
+          <select class="filter-sel" id="report-emp-filter" onchange="renderReports()">
+            <option value="">All Employees</option>
+          </select>
+          <input type="date" class="date-input" id="report-from" onchange="renderReports()"/>
+          <span style="color:var(--text-muted)">to</span>
+          <input type="date" class="date-input" id="report-to" onchange="renderReports()"/>
+          <button class="btn-outline" onclick="resetReportFilters()">Reset</button>
+        </div>
+
+        <div class="stats-row mini" id="report-stats"></div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Employee</th><th>Date</th><th>Check In</th><th>Check Out</th><th>Lunch In</th><th>Lunch Out</th><th>Net Hours</th><th>Status</th></tr></thead>
+              <tbody id="report-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end content-area -->
+  </div><!-- end main-content -->
+</div><!-- end app-layout -->
+
+<!-- Employee Modal -->
+<div class="modal-overlay" id="emp-modal">
+  <div class="modal" style="width:680px;max-width:98vw">
+    <div class="modal-header">
+      <h3 id="emp-modal-title">Add Employee</h3>
+      <button class="modal-close" onclick="closeModal('emp-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" style="max-height:75vh;overflow-y:auto">
+
+      <!-- Basic Info -->
+      <div style="font-size:12px;font-weight:600;color:var(--primary-light);letter-spacing:.5px;margin-bottom:10px;text-transform:uppercase">
+        <i class="fa-solid fa-user"></i> Basic Information
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" id="emp-name" class="form-input" placeholder="John Doe"/>
+        </div>
+        <div class="form-group">
+          <label>Username *</label>
+          <input type="text" id="emp-username" class="form-input" placeholder="johndoe"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Password *</label>
+          <input type="password" id="emp-password" class="form-input" placeholder="••••••••"/>
+        </div>
+        <div class="form-group">
+          <label>Department</label>
+          <input type="text" id="emp-dept" class="form-input" placeholder="Engineering"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Salary (₹)</label>
+          <input type="number" id="emp-salary" class="form-input" placeholder="50000"/>
+        </div>
+        <div class="form-group">
+          <label>Join Date</label>
+          <input type="date" id="emp-joindate" class="form-input"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="emp-email" class="form-input" placeholder="john@company.com"/>
+      </div>
+
+      <!-- Bank Details -->
+      <div style="font-size:12px;font-weight:600;color:var(--primary-light);letter-spacing:.5px;margin:18px 0 10px;text-transform:uppercase">
+        <i class="fa-solid fa-building-columns"></i> Bank Account Details
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Bank Account Number</label>
+          <input type="text" id="emp-bank-ac" class="form-input" placeholder="XXXXXXXXXXXX"/>
+        </div>
+        <div class="form-group">
+          <label>Bank Name</label>
+          <input type="text" id="emp-bank-name" class="form-input" placeholder="State Bank of India"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Branch Name</label>
+          <input type="text" id="emp-bank-branch" class="form-input" placeholder="Connaught Place, Delhi"/>
+        </div>
+        <div class="form-group">
+          <label>IFSC Code</label>
+          <input type="text" id="emp-bank-ifsc" class="form-input" placeholder="SBIN0001234" style="text-transform:uppercase"/>
+        </div>
+      </div>
+
+      <!-- KYC Numbers -->
+      <div style="font-size:12px;font-weight:600;color:var(--primary-light);letter-spacing:.5px;margin:18px 0 10px;text-transform:uppercase">
+        <i class="fa-solid fa-id-card"></i> KYC Details
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Aadhaar Number</label>
+          <input type="text" id="emp-aadhar" class="form-input" placeholder="XXXX XXXX XXXX" maxlength="14"/>
+        </div>
+        <div class="form-group">
+          <label>PAN Card Number</label>
+          <input type="text" id="emp-pan" class="form-input" placeholder="ABCDE1234F" maxlength="10" style="text-transform:uppercase"/>
+        </div>
+      </div>
+
+      <!-- Document Upload (only shown when adding new employee) -->
+      <div id="emp-doc-upload-section" style="margin-top:18px">
+        <div style="font-size:12px;font-weight:600;color:var(--primary-light);letter-spacing:.5px;margin-bottom:10px;text-transform:uppercase">
+          <i class="fa-solid fa-folder-open"></i> Upload Documents <span style="font-weight:400;color:var(--text-muted);font-size:11px">(optional — can upload later too)</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="doc-upload-item" style="padding:10px 14px">
+            <div class="doc-icon" style="width:34px;height:34px;font-size:14px"><i class="fa-solid fa-id-card"></i></div>
+            <div class="doc-info">
+              <div class="doc-label" style="font-size:12px">Aadhaar Card</div>
+              <div class="doc-status" id="new-status-aadhar">Not selected</div>
+            </div>
+            <div class="doc-actions">
+              <label class="doc-upload-btn" for="new-file-aadhar" style="font-size:11px;padding:4px 8px"><i class="fa-solid fa-upload"></i> Choose</label>
+              <input type="file" id="new-file-aadhar" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="previewNewDoc('aadhar',this)"/>
+            </div>
+          </div>
+          <div class="doc-upload-item" style="padding:10px 14px">
+            <div class="doc-icon" style="width:34px;height:34px;font-size:14px"><i class="fa-solid fa-credit-card"></i></div>
+            <div class="doc-info">
+              <div class="doc-label" style="font-size:12px">PAN Card</div>
+              <div class="doc-status" id="new-status-pan">Not selected</div>
+            </div>
+            <div class="doc-actions">
+              <label class="doc-upload-btn" for="new-file-pan" style="font-size:11px;padding:4px 8px"><i class="fa-solid fa-upload"></i> Choose</label>
+              <input type="file" id="new-file-pan" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="previewNewDoc('pan',this)"/>
+            </div>
+          </div>
+          <div class="doc-upload-item" style="padding:10px 14px">
+            <div class="doc-icon" style="width:34px;height:34px;font-size:14px"><i class="fa-solid fa-graduation-cap"></i></div>
+            <div class="doc-info">
+              <div class="doc-label" style="font-size:12px">Marksheet</div>
+              <div class="doc-status" id="new-status-marksheet">Not selected</div>
+            </div>
+            <div class="doc-actions">
+              <label class="doc-upload-btn" for="new-file-marksheet" style="font-size:11px;padding:4px 8px"><i class="fa-solid fa-upload"></i> Choose</label>
+              <input type="file" id="new-file-marksheet" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="previewNewDoc('marksheet',this)"/>
+            </div>
+          </div>
+          <div class="doc-upload-item" style="padding:10px 14px">
+            <div class="doc-icon" style="width:34px;height:34px;font-size:14px"><i class="fa-solid fa-book-open"></i></div>
+            <div class="doc-info">
+              <div class="doc-label" style="font-size:12px">Bank Passbook</div>
+              <div class="doc-status" id="new-status-passbook">Not selected</div>
+            </div>
+            <div class="doc-actions">
+              <label class="doc-upload-btn" for="new-file-passbook" style="font-size:11px;padding:4px 8px"><i class="fa-solid fa-upload"></i> Choose</label>
+              <input type="file" id="new-file-passbook" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="previewNewDoc('passbook',this)"/>
+            </div>
+          </div>
+        </div>
+        <p style="font-size:11px;color:var(--text-muted);margin-top:8px"><i class="fa-solid fa-circle-info"></i> Accepted: PDF, JPG, PNG. Max 5MB each.</p>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn-outline" onclick="closeModal('emp-modal')">Cancel</button>
+      <button class="btn-primary" onclick="saveEmployee()">Save Employee</button>
+    </div>
+  </div>
+</div>
+
+<!-- Documents Modal -->
+<div class="modal-overlay" id="docs-modal">
+  <div class="modal" style="width:600px">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-folder-open" style="color:var(--primary-light);margin-right:8px"></i> <span id="docs-modal-name">Employee</span> — Documents</h3>
+      <button class="modal-close" onclick="closeModal('docs-modal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div id="docs-modal-content">
+        <div style="text-align:center;color:var(--text-muted);padding:30px">Loading documents...</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-outline" onclick="closeModal('docs-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="js/db.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
